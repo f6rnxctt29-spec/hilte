@@ -13,7 +13,16 @@ def list_incidents(limit: int = 50):
             "select id, order_id, reporter_id, severity, status, text, resolution, created_at, updated_at from incidents order by created_at desc limit %s",
             (limit,)
         ).fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        try:
+            result.append(dict(r))
+        except Exception:
+            try:
+                result.append(dict(r._mapping))
+            except Exception:
+                result.append({})
+    return result
 
 @router.post('', response_model=dict)
 def create_incident(payload: dict):
