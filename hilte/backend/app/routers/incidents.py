@@ -30,12 +30,23 @@ def create_incident(payload: dict):
             ),
         ).fetchone()
         # write audit log
+        try:
+            target_id = row[0]
+        except Exception:
+            target_id = None
         conn.execute(
             "insert into audit_logs (actor, action, target_table, target_id, meta) values (%s,%s,%s,%s,%s)",
-            ('system','create_incident','incidents', row[0], json.dumps({}))
+            ('system','create_incident','incidents', target_id, json.dumps({}))
         )
         conn.commit()
-    return dict(row)
+    # normalize row to dict
+    try:
+        return dict(row)
+    except Exception:
+        try:
+            return dict(row._mapping)
+        except Exception:
+            return { 'id': target_id }
 
 @router.get('/{incident_id}', response_model=dict)
 def get_incident(incident_id: UUID):

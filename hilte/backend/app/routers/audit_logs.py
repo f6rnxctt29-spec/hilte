@@ -21,7 +21,17 @@ def list_audit_logs(limit: int = 50, target_table: str = None, target_id: str = 
                 "select id, actor, action, target_table, target_id, meta, ts from audit_logs order by ts desc limit %s",
                 (limit,)
             ).fetchall()
-    return [dict(r) for r in rows]
+    # normalize rows
+    result = []
+    for r in rows:
+        try:
+            result.append(dict(r))
+        except Exception:
+            try:
+                result.append(dict(r._mapping))
+            except Exception:
+                result.append({})
+    return result
 
 @router.post('', response_model=dict)
 def create_audit_log(payload: dict):
