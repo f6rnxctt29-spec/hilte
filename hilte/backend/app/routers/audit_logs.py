@@ -7,30 +7,21 @@ router = APIRouter(prefix='/audit_logs', tags=['audit_logs'])
 def list_audit_logs(limit: int = 50, target_table: str = None, target_id: str = None):
     with get_conn() as conn:
         if target_table and target_id:
-            rows = conn.execute(
-                "select id, actor, action, target_table, target_id, meta, ts from audit_logs where target_table=%s and target_id=%s order by ts desc limit %s",
-                (target_table, target_id, limit)
-            ).fetchall()
+            sql = "select json_build_object('id', id, 'actor', actor, 'action', action, 'target_table', target_table, 'target_id', target_id, 'meta', meta, 'ts', ts)::text as obj from audit_logs where target_table=%s and target_id=%s order by ts desc limit %s"
+            rows = conn.execute(sql, (target_table, target_id, limit)).fetchall()
         elif target_table:
-            rows = conn.execute(
-                "select id, actor, action, target_table, target_id, meta, ts from audit_logs where target_table=%s order by ts desc limit %s",
-                (target_table, limit)
-            ).fetchall()
+            sql = "select json_build_object('id', id, 'actor', actor, 'action', action, 'target_table', target_table, 'target_id', target_id, 'meta', meta, 'ts', ts)::text as obj from audit_logs where target_table=%s order by ts desc limit %s"
+            rows = conn.execute(sql, (target_table, limit)).fetchall()
         else:
-            rows = conn.execute(
-                "select id, actor, action, target_table, target_id, meta, ts from audit_logs order by ts desc limit %s",
-                (limit,)
-            ).fetchall()
-    # normalize rows
+            sql = "select json_build_object('id', id, 'actor', actor, 'action', action, 'target_table', target_table, 'target_id', target_id, 'meta', meta, 'ts', ts)::text as obj from audit_logs order by ts desc limit %s"
+            rows = conn.execute(sql, (limit,)).fetchall()
+    import json
     result = []
     for r in rows:
         try:
-            result.append(dict(r))
+            result.append(json.loads(r[0]))
         except Exception:
-            try:
-                result.append(dict(r._mapping))
-            except Exception:
-                result.append({})
+            result.append({})
     return result
 
 @router.post('', response_model=dict)
