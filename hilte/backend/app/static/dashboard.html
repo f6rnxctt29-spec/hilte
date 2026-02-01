@@ -51,5 +51,39 @@ async function refresh(){
 }
 refresh();setInterval(refresh,5000);
 </script>
+
+  <section style="margin-top:18px">
+    <h3>Create Incident</h3>
+    <form id="incidentForm">
+      <label>Order ID: <input type="text" name="order_id" /></label><br/>
+      <label>Severity: <select name="severity"><option>low</option><option>medium</option><option>high</option></select></label><br/>
+      <label>Text:<br/><textarea name="text" rows="4" cols="60"></textarea></label><br/>
+      <button type="submit">Create Incident</button>
+    </form>
+  </section>
+
+  <section style="margin-top:18px">
+    <h3>Audit Log</h3>
+    <pre id="audit">loading...</pre>
+  </section>
+
+<script>
+document.getElementById('incidentForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = Object.fromEntries(fd.entries());
+  const res = await fetch('/incidents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+  const json = await res.json();
+  alert('Created: '+json.id);
+  loadAudit();
+});
+async function loadAudit(){
+  const r=await fetch('/audit_logs');
+  const j=await r.json();
+  document.getElementById('audit').textContent = JSON.stringify(j, null, 2);
+}
+loadAudit();
+</script>
+
 </body>
 </html>
