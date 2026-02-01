@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>HILTE Manager Dashboard (v0)</title>
+  <style>
+    body{font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; margin:24px}
+    header{display:flex;align-items:center;justify-content:space-between}
+    .cards{display:flex;gap:12px;margin-top:18px}
+    .card{padding:12px;border:1px solid #ddd;border-radius:8px;min-width:160px}
+    pre{background:#f7f7f7;padding:12px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>HILTE — Manager Dashboard (v0)</h1>
+    <div id="ts">--</div>
+  </header>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Orders Today</h3>
+      <div id="orders_today">—</div>
+    </div>
+    <div class="card">
+      <h3>Orders Tomorrow</h3>
+      <div id="orders_tomorrow">—</div>
+    </div>
+    <div class="card">
+      <h3>Unpaid</h3>
+      <div id="unpaid">—</div>
+    </div>
+  </div>
+
+  <section style="margin-top:18px">
+    <h3>Recent</h3>
+    <pre id="raw">loading...</pre>
+  </section>
+
+<script>
+async function refresh(){
+  try{
+    const r=await fetch('/dash/manager');
+    const j=await r.json();
+    document.getElementById('orders_today').textContent=j.orders_today;
+    document.getElementById('orders_tomorrow').textContent=j.orders_tomorrow;
+    document.getElementById('unpaid').textContent=j.unpaid;
+    document.getElementById('raw').textContent=JSON.stringify(j, null, 2);
+    document.getElementById('ts').textContent=new Date().toLocaleString();
+  }catch(e){ document.getElementById('raw').textContent='error: '+e }
+}
+refresh();setInterval(refresh,5000);
+</script>
+</body>
+</html>
