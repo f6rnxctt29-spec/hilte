@@ -86,14 +86,23 @@ refresh();setInterval(refresh,5000);
 <script>
 document.getElementById('incidentForm').addEventListener('submit', async function(e){
   e.preventDefault();
-  const fd = new FormData(e.target);
-  const data = Object.fromEntries(fd.entries());
-  const res = await fetch(API_BASE + '/incidents', {method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
-  const t = await res.text();
-  if(!res.ok) throw new Error(`incidents HTTP ${res.status}: ${t.slice(0,200)}`);
-  const json = JSON.parse(t);
-  alert('Created: '+json.id);
-  loadAll();
+  try{
+    const fd = new FormData(e.target);
+    const data = Object.fromEntries(fd.entries());
+    // empty strings -> null
+    if(data.order_id === '') delete data.order_id;
+    if(data.text === '') throw new Error('Text is required');
+
+    const res = await fetch(API_BASE + '/incidents', {method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+    const t = await res.text();
+    if(!res.ok) throw new Error(`incidents HTTP ${res.status}: ${t.slice(0,200)}`);
+    const json = JSON.parse(t);
+    alert('Incident created: '+json.id);
+    e.target.reset();
+    loadAll();
+  }catch(err){
+    alert('Create Incident failed: ' + (err && err.message ? err.message : String(err)));
+  }
 });
 async function loadAudit(){
   const r = await fetch(API_BASE + '/audit_logs?limit=20', { mode: 'cors' });

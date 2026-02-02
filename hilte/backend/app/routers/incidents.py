@@ -3,6 +3,17 @@ from uuid import UUID
 from ..db import get_conn
 from ..audit import log_action
 
+
+def _maybe_uuid(v):
+    if v is None:
+        return None
+    if isinstance(v, UUID):
+        return v
+    try:
+        return UUID(str(v))
+    except Exception:
+        return None
+
 router = APIRouter(prefix='/incidents', tags=['incidents'])
 
 @router.get('', response_model=list[dict])
@@ -16,19 +27,22 @@ def list_incidents(limit: int = 50):
 
 @router.post('', response_model=dict)
 def create_incident(payload: dict, x_actor: str = Header(default='system')):
+    order_id = _maybe_uuid(payload.get('order_id'))
+    reporter_id = _maybe_uuid(payload.get('reporter_id'))
+
     with get_conn() as conn:
         row = conn.execute(
             "insert into incidents (order_id, reporter_id, severity, status, text, resolution) values (%s,%s,%s,%s,%s,%s) returning id, order_id, reporter_id, severity, status, text, resolution, created_at, updated_at",
             (
-                payload.get('order_id'),
-                payload.get('reporter_id'),
+                order_id,
+                reporter_id,
                 payload.get('severity', 'low'),
                 payload.get('status', 'open'),
                 payload.get('text'),
                 payload.get('resolution'),
             ),
         ).fetchone()
-        log_action(conn, actor=x_actor, action='create_incident', target_table='incidents', target_id=row['id'], meta=payload)
+        log_action(conn, actor=x_actor, action='create_incident', target_table='incidents', target_id=row['id'], meta={**payload, 'order_id': str(order_id) if order_id else None})
         conn.commit()
     return dict(row)
 
