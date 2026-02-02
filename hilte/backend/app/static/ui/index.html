@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HILTE — Control Center</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">HILTE</div>
+    <nav class="nav">
+      <a class="active" href="/ui/index.html">Control Center</a>
+      <a href="/ui/ops.html">Operations Timeline</a>
+      <a href="/ui/orders.html">Orders</a>
+      <a href="/ui/clients.html">Clients</a>
+      <a href="/ui/objects.html">Objects</a>
+      <a href="/ui/quality.html">Quality</a>
+      <a href="/ui/finance.html">Finance</a>
+      <a href="/ui/triggers.html">Triggers</a>
+      <a href="/ui/settings.html">Settings</a>
+    </nav>
+    <div style="margin-top:18px" class="small">
+      <div><span class="mono">UI</span> http://127.0.0.1:9000</div>
+      <div><span class="mono">API</span> http://127.0.0.1:8008</div>
+      <div id="ts" class="small">—</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search">
+        <span class="small">Search</span>
+        <input id="q" placeholder="Client / Object / Order ID" />
+      </div>
+      <div class="top-actions">
+        <button class="btn">Filters</button>
+        <button class="btn">Me</button>
+        <button class="btn primary" disabled title="Control Center is read-only">Read‑only</button>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="hd">
+        <h2>Business status (30s)</h2>
+        <div class="small" id="hint">Decision-first / metrics-first</div>
+      </div>
+      <div class="bd">
+        <div class="kpis">
+          <div class="kpi"><div class="t">Revenue today</div><div class="v" id="rev">—</div><div class="s" id="rev_s">—</div></div>
+          <div class="kpi"><div class="t">Margin today</div><div class="v" id="mar">—</div><div class="s" id="mar_s">—</div></div>
+          <div class="kpi"><div class="t">Below margin floor</div><div class="v" id="below">—</div><div class="s">orders</div></div>
+          <div class="kpi"><div class="t">Overdue payments</div><div class="v" id="overdue">—</div><div class="s">invoices</div></div>
+        </div>
+
+        <div class="chartRow">
+          <div class="chart">
+            <div class="t">Orders (7d)</div>
+            <svg id="orders7" viewBox="0 0 260 90" preserveAspectRatio="none"></svg>
+          </div>
+          <div class="chart">
+            <div class="t">SLA risk</div>
+            <svg id="slaGauge" class="gauge" viewBox="0 0 200 120"></svg>
+          </div>
+          <div class="chart">
+            <div class="t">Revenue (7d)</div>
+            <svg id="rev7" viewBox="0 0 260 90" preserveAspectRatio="none"></svg>
+          </div>
+          <div class="chart">
+            <div class="t">Margin (7d)</div>
+            <svg id="mar7" viewBox="0 0 260 90" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid" style="margin-top:14px">
+      <section class="section">
+        <div class="hd"><h2>Operations today</h2><div class="small" id="ops_state">—</div></div>
+        <div class="bd">
+          <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+            <div class="kpi"><div class="t">Orders today</div><div class="v" id="o_today">—</div></div>
+            <div class="kpi"><div class="t">Orders tomorrow</div><div class="v" id="o_tom">—</div></div>
+            <div class="kpi"><div class="t">SLA risk</div><div class="v" id="sla">—</div><div class="s" id="sla_s">—</div></div>
+          </div>
+          <div style="margin-top:12px" class="small">Upcoming (next 8h)</div>
+          <table class="table" id="upcoming">
+            <thead><tr><th>Time</th><th>Status</th><th>Margin</th><th class="mono">Order ID</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="upcoming_err" class="err small"></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="hd"><h2>Risks & incidents</h2><div class="small">If empty → healthy</div></div>
+        <div class="bd">
+          <div class="kpis" style="grid-template-columns:repeat(2,1fr)">
+            <div class="kpi"><div class="t">Open incidents</div><div class="v" id="inc_open">—</div></div>
+            <div class="kpi"><div class="t">Repeat visits required</div><div class="v" id="repeat">—</div></div>
+          </div>
+          <div style="margin-top:12px" class="small">Triggers fired today</div>
+          <table class="table" id="trigs">
+            <thead><tr><th>When</th><th>Name</th><th>Status</th><th>Result</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div id="trigs_err" class="err small"></div>
+        </div>
+      </section>
+
+      <section class="section" style="grid-column:1/-1">
+        <div class="hd"><h2>Decision queue</h2><div class="small">What must be done now</div></div>
+        <div class="bd">
+          <table class="table" id="queue">
+            <thead><tr><th>Priority</th><th>Type</th><th>What</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td><span class="pill y">P2</span></td><td>UX</td><td>Order screen (Overview+Timeline)</td><td>Enable decisions from control center</td></tr>
+            </tbody>
+          </table>
+          <div class="small">(Queue будет строиться из triggers + incidents + payments + SLA risk)</div>
+        </div>
+      </section>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8008';
+
+function money(v){
+  if(v === null || v === undefined) return '—';
+  const n = Number(v);
+  if(Number.isNaN(n)) return String(v);
+  return n.toLocaleString('ru-RU', {maximumFractionDigits:0}) + ' ₽';
+}
+function pillForRisk(p){
+  if(p >= 0.7) return '<span class="pill r">RED</span>';
+  if(p >= 0.3) return '<span class="pill y">YELLOW</span>';
+  return '<span class="pill g">GREEN</span>';
+}
+function fmtDT(v){ try{return new Date(v).toLocaleString()}catch{return String(v)} }
+
+function drawBars(svg, values){
+  const w=260,h=90,p=6;
+  svg.innerHTML='';
+  const max=Math.max(1,...values);
+  const n=values.length;
+  const bw=(w - p*(n+1))/n;
+  for(let i=0;i<n;i++){
+    const v=values[i];
+    const bh=(h-14) * (v/max);
+    const x=p + i*(bw+p);
+    const y=h - bh;
+    const r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',x); r.setAttribute('y',y);
+    r.setAttribute('width',bw); r.setAttribute('height',bh);
+    r.setAttribute('rx','4');
+    r.setAttribute('fill', i===n-1 ? '#111827' : 'rgba(17,24,39,.25)');
+    svg.appendChild(r);
+  }
+}
+
+function drawSpark(svg, values){
+  const w=260,h=90;
+  svg.innerHTML='';
+  const max=Math.max(1,...values);
+  const min=Math.min(...values);
+  const rng=Math.max(1e-6, max-min);
+  const n=values.length;
+  let d='';
+  for(let i=0;i<n;i++){
+    const x = (w/(n-1))*i;
+    const y = 10 + (h-20) * (1 - ((values[i]-min)/rng));
+    d += (i===0?`M ${x} ${y}`:` L ${x} ${y}`);
+  }
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',d);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke','#111827');
+  path.setAttribute('stroke-width','2');
+  path.setAttribute('stroke-linecap','round');
+  svg.appendChild(path);
+}
+
+function drawGauge(svg, p){
+  svg.innerHTML='';
+  const cx=100, cy=100, r=70;
+  const start=Math.PI, end=0;
+  const val = Math.max(0, Math.min(1, p));
+  const a = start + (end-start)*val;
+
+  function arcPath(a0,a1){
+    const x0=cx + r*Math.cos(a0), y0=cy + r*Math.sin(a0);
+    const x1=cx + r*Math.cos(a1), y1=cy + r*Math.sin(a1);
+    const large = (a1-a0) % (2*Math.PI) > Math.PI ? 1 : 0;
+    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+  }
+
+  const bg=document.createElementNS('http://www.w3.org/2000/svg','path');
+  bg.setAttribute('d', arcPath(start,end));
+  bg.setAttribute('stroke','rgba(17,24,39,.15)');
+  bg.setAttribute('stroke-width','10');
+  bg.setAttribute('fill','none');
+  svg.appendChild(bg);
+
+  const fg=document.createElementNS('http://www.w3.org/2000/svg','path');
+  fg.setAttribute('d', arcPath(start,a));
+  fg.setAttribute('stroke', val>=0.7?'#b91c1c':(val>=0.3?'#b45309':'#047857'));
+  fg.setAttribute('stroke-width','10');
+  fg.setAttribute('fill','none');
+  fg.setAttribute('stroke-linecap','round');
+  svg.appendChild(fg);
+
+  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+  t.setAttribute('x','100'); t.setAttribute('y','95');
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','22');
+  t.textContent = `${Math.round(val*100)}%`;
+  svg.appendChild(t);
+
+  const s=document.createElementNS('http://www.w3.org/2000/svg','text');
+  s.setAttribute('x','100'); s.setAttribute('y','115');
+  s.setAttribute('text-anchor','middle');
+  s.setAttribute('font-size','11');
+  s.setAttribute('fill','#6b7280');
+  s.textContent = 'SLA risk share';
+  svg.appendChild(s);
+}
+
+async function fetchJson(url){
+  const r = await fetch(url, {mode:'cors'});
+  const t = await r.text();
+  if(!r.ok) throw new Error(`${r.status} ${t.slice(0,160)}`);
+  return JSON.parse(t);
+}
+
+async function load(){
+  document.getElementById('ts').textContent = new Date().toLocaleString();
+
+  const cc = await fetchJson(API + '/dash/control_center');
+  const series = await fetchJson(API + '/dash/series?days=7');
+  document.getElementById('rev').textContent = money(cc.finance.revenue_today);
+  document.getElementById('mar').textContent = money(cc.finance.margin_today);
+  document.getElementById('below').textContent = cc.finance.below_margin_floor;
+  document.getElementById('overdue').textContent = cc.finance.overdue_payments;
+  document.getElementById('rev_s').textContent = `orders: ${cc.finance.orders_count}`;
+  document.getElementById('mar_s').textContent = `avg margin: ${cc.finance.avg_margin_pct}%`;
+
+  document.getElementById('o_today').textContent = cc.ops.orders_today;
+  document.getElementById('o_tom').textContent = cc.ops.orders_tomorrow;
+  document.getElementById('sla').innerHTML = pillForRisk(cc.ops.sla_risk);
+  document.getElementById('sla_s').textContent = `risk share: ${(cc.ops.sla_risk*100).toFixed(0)}%`;
+
+  document.getElementById('inc_open').textContent = cc.risks.open_incidents;
+  document.getElementById('repeat').textContent = cc.risks.repeat_visits;
+
+  // charts
+  const ordersVals = series.map(r => r.orders);
+  const revVals = series.map(r => r.revenue);
+  const marVals = series.map(r => r.margin);
+  drawBars(document.getElementById('orders7'), ordersVals);
+  drawSpark(document.getElementById('rev7'), revVals);
+  drawSpark(document.getElementById('mar7'), marVals);
+  drawGauge(document.getElementById('slaGauge'), cc.ops.sla_risk);
+
+  // upcoming
+  const utb = document.querySelector('#upcoming tbody');
+  utb.innerHTML='';
+  for(const o of cc.ops.upcoming_orders){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtDT(o.scheduled_at)}</td><td>${o.status}</td><td>${Number(o.margin||0).toFixed(0)}</td><td class="mono">${o.id}</td>`;
+    utb.appendChild(tr);
+  }
+
+  // triggers
+  const ttb = document.querySelector('#trigs tbody');
+  ttb.innerHTML='';
+  for(const t of cc.risks.triggers_today){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtDT(t.ran_at)}</td><td>${t.name}</td><td>${t.status}</td><td class="mono">${JSON.stringify(t.result||{})}</td>`;
+    ttb.appendChild(tr);
+  }
+}
+
+async function safeLoad(){
+  try{
+    document.getElementById('upcoming_err').textContent='';
+    document.getElementById('trigs_err').textContent='';
+    await load();
+  }catch(e){
+    const msg = e?.message || String(e);
+    document.getElementById('upcoming_err').textContent = msg;
+    document.getElementById('trigs_err').textContent = msg;
+  }
+}
+
+safeLoad();
+setInterval(safeLoad, 5000);
+</script>
+</body>
+</html>
