@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru"><head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HILTE — Orders</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">HILTE</div>
+    <nav class="nav">
+      <a href="/ui/index.html">Control Center</a>
+      <a href="/ui/ops.html">Operations Timeline</a>
+      <a class="active" href="/ui/orders.html">Orders</a>
+      <a href="/ui/clients.html">Clients</a>
+      <a href="/ui/objects.html">Objects</a>
+      <a href="/ui/quality.html">Quality</a>
+      <a href="/ui/finance.html">Finance</a>
+      <a href="/ui/triggers.html">Triggers</a>
+      <a href="/ui/settings.html">Settings</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search"><span class="small">Search</span><input id="q" placeholder="Order ID" /></div>
+      <div class="top-actions">
+        <button class="btn" id="refresh">Refresh</button>
+        <button class="btn primary" disabled>Orders</button>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="hd"><h2>Orders</h2><div class="small" id="ts">—</div></div>
+      <div class="bd">
+        <div id="err" class="err small"></div>
+        <table class="table" id="tbl">
+          <thead><tr><th>Scheduled</th><th>Status</th><th>Price</th><th>Cost</th><th>Margin</th><th class="mono">Order</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const API='http://127.0.0.1:8008';
+function fmtDT(v){ try{return new Date(v).toLocaleString()}catch{return String(v)} }
+function money(v){return Number(v||0).toLocaleString('ru-RU',{maximumFractionDigits:0})}
+async function fetchJson(url){
+  const r=await fetch(url,{mode:'cors'});const t=await r.text();
+  if(!r.ok) throw new Error(`${r.status} ${t.slice(0,160)}`);
+  return JSON.parse(t);
+}
+async function load(){
+  document.getElementById('ts').textContent=new Date().toLocaleString();
+  document.getElementById('err').textContent='';
+  const rows = await fetchJson(API + '/orders?limit=80');
+  const q=document.getElementById('q').value.trim();
+  const filtered=q?rows.filter(r=>(r.id||'').includes(q)):rows;
+  const tb=document.querySelector('#tbl tbody');tb.innerHTML='';
+  for(const r of filtered){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${fmtDT(r.scheduled_at)}</td><td>${r.status}</td><td>${money(r.price)}</td><td>${money(r.cost)}</td><td>${money(r.margin)}</td><td class="mono">${r.id}</td>`;
+    tb.appendChild(tr);
+  }
+}
+async function safe(){try{await load()}catch(e){document.getElementById('err').textContent=e.message||String(e)}}
+
+document.getElementById('refresh').addEventListener('click', safe);
+document.getElementById('q').addEventListener('input', safe);
+safe();
+</script>
+</body></html>

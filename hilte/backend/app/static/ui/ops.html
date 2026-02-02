@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru"><head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HILTE — Operations Timeline</title>
+  <link rel="stylesheet" href="/ui/style.css" />
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">HILTE</div>
+    <nav class="nav">
+      <a href="/ui/index.html">Control Center</a>
+      <a class="active" href="/ui/ops.html">Operations Timeline</a>
+      <a href="/ui/orders.html">Orders</a>
+      <a href="/ui/clients.html">Clients</a>
+      <a href="/ui/objects.html">Objects</a>
+      <a href="/ui/quality.html">Quality</a>
+      <a href="/ui/finance.html">Finance</a>
+      <a href="/ui/triggers.html">Triggers</a>
+      <a href="/ui/settings.html">Settings</a>
+    </nav>
+    <div style="margin-top:18px" class="small">
+      <div><span class="mono">UI</span> http://127.0.0.1:9000</div>
+      <div><span class="mono">API</span> http://127.0.0.1:8008</div>
+      <div id="ts" class="small">—</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search"><span class="small">Search</span><input id="q" placeholder="Order ID" /></div>
+      <div class="top-actions">
+        <button class="btn" id="refresh">Refresh</button>
+        <button class="btn primary" disabled>Coordinator</button>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="hd"><h2>Timeline (next 24h)</h2><div class="small">one row = one order</div></div>
+      <div class="bd">
+        <div id="err" class="err small"></div>
+        <table class="table" id="tbl">
+          <thead><tr><th>Time</th><th>Status</th><th>Risk</th><th>Price</th><th>Margin</th><th class="mono">Order</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const API='http://127.0.0.1:8008';
+function fmtDT(v){ try{return new Date(v).toLocaleString()}catch{return String(v)} }
+function money(v){return Number(v||0).toLocaleString('ru-RU',{maximumFractionDigits:0})}
+function riskPill(r){
+  const s=String(r||'green').toLowerCase();
+  if(s==='red') return '<span class="pill r">RED</span>';
+  if(s==='yellow'||s==='amber') return '<span class="pill y">YELLOW</span>';
+  return '<span class="pill g">GREEN</span>';
+}
+async function fetchJson(url){
+  const r=await fetch(url,{mode:'cors'});const t=await r.text();
+  if(!r.ok) throw new Error(`${r.status} ${t.slice(0,160)}`);
+  return JSON.parse(t);
+}
+async function load(){
+  document.getElementById('ts').textContent=new Date().toLocaleString();
+  document.getElementById('err').textContent='';
+  const rows = await fetchJson(API + '/orders/upcoming?hours=24&limit=200');
+  const q=document.getElementById('q').value.trim();
+  const filtered=q?rows.filter(r=>(r.id||'').includes(q)):rows;
+  const tb=document.querySelector('#tbl tbody');tb.innerHTML='';
+  for(const r of filtered){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${fmtDT(r.scheduled_at)}</td><td>${r.status}</td><td>${riskPill(r.sla_risk)}</td><td>${money(r.price)}</td><td>${money(r.margin)}</td><td class="mono">${r.id}</td>`;
+    tb.appendChild(tr);
+  }
+}
+async function safe(){try{await load()}catch(e){document.getElementById('err').textContent=e.message||String(e)}}
+
+document.getElementById('refresh').addEventListener('click', safe);
+document.getElementById('q').addEventListener('input', safe);
+safe();setInterval(safe,15000);
+</script>
+</body></html>

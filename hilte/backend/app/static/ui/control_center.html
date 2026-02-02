@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HILTE — Control Center</title>
+  <link rel="stylesheet" href="/ui/base.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">HILTE</div>
+      <nav class="nav">
+        <a class="active" href="/ui/control">Dashboard</a>
+        <a href="/ui/ops">Operations</a>
+        <a href="/ui/orders">Orders</a>
+        <a href="/ui/clients">Clients</a>
+        <a href="/ui/objects">Objects</a>
+        <a href="/ui/quality">Quality</a>
+        <a href="/ui/finance">Finance</a>
+        <a href="/ui/triggers">Triggers</a>
+      </nav>
+      <div class="section small">Read‑only: decision & risk.</div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="search">
+          <input id="q" placeholder="Search client / order / object…" />
+        </div>
+        <div class="actions">
+          <button class="btn ghost" id="refresh">Refresh</button>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="cards">
+          <div class="card"><div class="label">Revenue today</div><div class="value" id="rev">—</div><div class="small" id="rev_s">—</div></div>
+          <div class="card"><div class="label">Margin today</div><div class="value" id="mar">—</div><div class="small" id="mar_s">—</div></div>
+          <div class="card"><div class="label">Below margin floor</div><div class="value" id="below">—</div><div class="small">orders</div></div>
+          <div class="card"><div class="label">Overdue payments</div><div class="value" id="overdue">—</div><div class="small">orders</div></div>
+        </div>
+      </section>
+
+      <section class="section grid2">
+        <div class="panel">
+          <div class="ph"><h3>Operations (next)</h3><div class="small" id="ts">—</div></div>
+          <div class="pb">
+            <div class="err" id="ops_err"></div>
+            <table class="table" id="upcoming">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Status</th><th>Price</th><th>Margin</th><th class="mono">Order</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><h3>Risks</h3><span class="small">empty = healthy</span></div>
+          <div class="pb">
+            <div class="err" id="risk_err"></div>
+            <table class="table" id="risks">
+              <tbody>
+                <tr><th>Open incidents</th><td id="inc">—</td></tr>
+                <tr><th>Repeat visits</th><td id="repeat">—</td></tr>
+                <tr><th>SLA risk</th><td id="sla">—</td></tr>
+                <tr><th>Triggers today</th><td id="trig">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="panel">
+          <div class="ph"><h3>Triggers fired today</h3><span class="small">requires attention</span></div>
+          <div class="pb">
+            <div class="err" id="trig_err"></div>
+            <table class="table" id="trigger_logs">
+              <thead><tr><th>Time</th><th>Name</th><th>Status</th><th>Result</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+<script type="module">
+import {fetchJson, pill, fmtDT} from '/ui/app.js';
+
+function money(n){
+  const x = Number(n||0);
+  return x.toLocaleString(undefined,{maximumFractionDigits:0});
+}
+
+async function load(){
+  document.getElementById('ops_err').textContent='';
+  document.getElementById('risk_err').textContent='';
+  document.getElementById('trig_err').textContent='';
+  try{
+    const cc = await fetchJson('/dash/control_center');
+    document.getElementById('rev').textContent = money(cc.finance.revenue_today);
+    document.getElementById('mar').textContent = money(cc.finance.margin_today);
+    document.getElementById('below').textContent = cc.finance.below_margin_floor;
+    document.getElementById('overdue').textContent = cc.finance.overdue_payments;
+    document.getElementById('rev_s').textContent = 'orders: ' + cc.ops.orders_today;
+    document.getElementById('mar_s').textContent = 'orders: ' + cc.ops.orders_today;
+
+    document.getElementById('inc').textContent = cc.risks.open_incidents;
+    document.getElementById('repeat').textContent = cc.risks.repeat_visits;
+    document.getElementById('sla').innerHTML = `<span class="pill ${cc.risks.sla_risk}">${cc.risks.sla_risk}</span>`;
+    document.getElementById('trig').textContent = cc.triggers.fired_today;
+
+    const tb = document.querySelector('#upcoming tbody');
+    tb.innerHTML='';
+    for(const o of cc.upcoming){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${fmtDT(o.scheduled_at)}</td><td>${pill(o.status)}</td><td>${money(o.price)}</td><td>${money(o.margin)}</td><td class="mono">${o.id}</td>`;
+      tb.appendChild(tr);
+    }
+
+    const ttb = document.querySelector('#trigger_logs tbody');
+    ttb.innerHTML='';
+    for(const t of cc.triggers.logs){
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${fmtDT(t.ran_at)}</td><td class="mono">${t.name}</td><td>${pill(t.status)}</td><td class="mono">${JSON.stringify(t.result||{})}</td>`;
+      ttb.appendChild(tr);
+    }
+
+    document.getElementById('ts').textContent = new Date().toLocaleString();
+  }catch(e){
+    document.getElementById('ops_err').textContent = e.message || String(e);
+  }
+}
+
+document.getElementById('refresh').addEventListener('click', load);
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

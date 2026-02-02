@@ -5,7 +5,32 @@ from ..schemas import OrderCreate, OrderOut, OrderUpdate
 from ..audit import log_action
 from ..jsonutil import j
 
+from datetime import datetime, timedelta, timezone
+
 router = APIRouter(prefix='/orders', tags=['orders'])
+
+@router.get('/upcoming', response_model=list[dict])
+def upcoming_orders(hours: int = 24, limit: int = 200):
+    now = datetime.now(timezone.utc)
+    horizon = now + timedelta(hours=max(1, min(hours, 168)))
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            select id, booking_id, scheduled_at, type, price, cost, margin, status, created_at
+            from orders
+            where scheduled_at is not null and scheduled_at >= %s and scheduled_at <= %s
+            order by scheduled_at asc
+            limit %s
+            """,
+            (now, horizon, limit),
+        ).fetchall()
+    # placeholder for future SLA model
+    out = []
+    for r in rows:
+        d = dict(r)
+        d['sla_risk'] = 'green'
+        out.append(d)
+    return out
 
 @router.get('', response_model=list[OrderOut])
 def list_orders(limit: int = 50):
