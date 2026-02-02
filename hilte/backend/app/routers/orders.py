@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Header
 from uuid import UUID
 from ..db import get_conn
 from ..schemas import OrderCreate, OrderOut, OrderUpdate
-from psycopg.types.json import Json
 from ..audit import log_action
 from ..jsonutil import j
 
@@ -73,7 +72,7 @@ def update_order(order_id: UUID, payload: OrderUpdate, x_actor: str = Header(def
         if k == 'items' and v is not None:
             args.append(j(v))
         else:
-            args.append(Json(v) if k == 'items' and v is not None else v)
+            args.append(v)
     args.append(order_id)
 
     with get_conn() as conn:

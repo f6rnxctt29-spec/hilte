@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Header
 from uuid import UUID
 from ..db import get_conn
 from ..schemas import ClientCreate, ClientOut, ClientUpdate
-from psycopg.types.json import Json
 from ..audit import log_action
 from ..jsonutil import j
 
@@ -73,7 +72,7 @@ def update_client(client_id: UUID, payload: ClientUpdate, x_actor: str = Header(
         if k in ('contact','preferences') and v is not None:
             args.append(j(v))
         else:
-            args.append(Json(v) if k in ('contact','preferences') and v is not None else v)
+            args.append(v)
     args.append(client_id)
 
     with get_conn() as conn:

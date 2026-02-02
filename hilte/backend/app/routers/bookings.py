@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Header
 from uuid import UUID
 from ..db import get_conn
 from ..schemas import BookingCreate, BookingOut, BookingUpdate, OrderCreate, OrderOut
-from psycopg.types.json import Json
 from ..audit import log_action
 from ..jsonutil import j
 
@@ -65,7 +64,7 @@ def update_booking(booking_id: UUID, payload: BookingUpdate, x_actor: str = Head
         if k == 'payload' and v is not None:
             args.append(j(v))
         else:
-            args.append(Json(v) if k == 'payload' and v is not None else v)
+            args.append(v)
     args.append(booking_id)
 
     with get_conn() as conn:

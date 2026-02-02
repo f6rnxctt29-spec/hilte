@@ -4,6 +4,6 @@ from typing import Any
 from psycopg.types.json import Json
 
 
-def j(v: Any):
-    """Wrap python dict/list for json/jsonb columns."""
-    return Json(v)
+def j(value: Any) -> Json:
+    """Wrap Python dict/list primitives for json/jsonb parameters in psycopg."""
+    return Json(value)
