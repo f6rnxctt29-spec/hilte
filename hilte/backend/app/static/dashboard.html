@@ -69,6 +69,16 @@ refresh();setInterval(refresh,5000);
   </section>
 
   <section style="margin-top:18px">
+    <h3>Latest Orders</h3>
+    <pre id="orders">loading...</pre>
+  </section>
+
+  <section style="margin-top:18px">
+    <h3>Latest Bookings</h3>
+    <pre id="bookings">loading...</pre>
+  </section>
+
+  <section style="margin-top:18px">
     <h3>Audit Log</h3>
     <pre id="audit">loading...</pre>
   </section>
@@ -83,16 +93,38 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
   if(!res.ok) throw new Error(`incidents HTTP ${res.status}: ${t.slice(0,200)}`);
   const json = JSON.parse(t);
   alert('Created: '+json.id);
-  loadAudit();
+  loadAll();
 });
 async function loadAudit(){
-  const r = await fetch(API_BASE + '/audit_logs', { mode: 'cors' });
+  const r = await fetch(API_BASE + '/audit_logs?limit=20', { mode: 'cors' });
   const t = await r.text();
   if(!r.ok) throw new Error(`audit_logs HTTP ${r.status}: ${t.slice(0,200)}`);
   const j = JSON.parse(t);
   document.getElementById('audit').textContent = JSON.stringify(j, null, 2);
 }
-loadAudit();
+
+async function loadOrders(){
+  const r = await fetch(API_BASE + '/orders?limit=20', { mode: 'cors' });
+  const t = await r.text();
+  if(!r.ok) throw new Error(`orders HTTP ${r.status}: ${t.slice(0,200)}`);
+  const j = JSON.parse(t);
+  document.getElementById('orders').textContent = JSON.stringify(j, null, 2);
+}
+
+async function loadBookings(){
+  const r = await fetch(API_BASE + '/bookings?limit=20', { mode: 'cors' });
+  const t = await r.text();
+  if(!r.ok) throw new Error(`bookings HTTP ${r.status}: ${t.slice(0,200)}`);
+  const j = JSON.parse(t);
+  document.getElementById('bookings').textContent = JSON.stringify(j, null, 2);
+}
+
+async function loadAll(){
+  await Promise.allSettled([loadAudit(), loadOrders(), loadBookings()]);
+}
+
+loadAll();
+setInterval(loadAll, 5000);
 </script>
 
 </body>
