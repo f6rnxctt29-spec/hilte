@@ -9,6 +9,7 @@
 ## In progress
 - Backend FastAPI: DB connection + CRUD endpoints (clients/bookings/orders)
 - Manager dashboards (stubs → real queries)
+- v1 data model: order_events + service formats/addons + order_items + compliments + ERP stubs
 
 ## Latest changes
 - clients: добавлены поля phone, telegram, address
