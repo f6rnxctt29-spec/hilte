@@ -38,9 +38,11 @@
   </section>
 
 <script>
+const API_BASE = 'http://127.0.0.1:8008';
+
 async function refresh(){
   try{
-    const r=await fetch('/dash/manager');
+    const r=await fetch(API_BASE + '/dash/manager');
     const j=await r.json();
     document.getElementById('orders_today').textContent=j.orders_today;
     document.getElementById('orders_tomorrow').textContent=j.orders_tomorrow;
@@ -72,13 +74,13 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
   e.preventDefault();
   const fd = new FormData(e.target);
   const data = Object.fromEntries(fd.entries());
-  const res = await fetch('/incidents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+  const res = await fetch(API_BASE + '/incidents', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
   const json = await res.json();
   alert('Created: '+json.id);
   loadAudit();
 });
 async function loadAudit(){
-  const r=await fetch('/audit_logs');
+  const r=await fetch(API_BASE + '/audit_logs');
   const j=await r.json();
   document.getElementById('audit').textContent = JSON.stringify(j, null, 2);
 }
