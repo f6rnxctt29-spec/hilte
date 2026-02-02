@@ -3,138 +3,371 @@
 <head>
   <meta charset="utf-8" />
   <title>HILTE Manager Dashboard (v0)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body{font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; margin:24px}
-    header{display:flex;align-items:center;justify-content:space-between}
-    .cards{display:flex;gap:12px;margin-top:18px}
-    .card{padding:12px;border:1px solid #ddd;border-radius:8px;min-width:160px}
-    pre{background:#f7f7f7;padding:12px;border-radius:6px}
+    :root{
+      --fg:#111; --muted:#6b7280; --bg:#fff; --card:#fff;
+      --border:#e5e7eb; --soft:#f3f4f6; --accent:#111827;
+      --green:#059669; --red:#dc2626; --amber:#d97706;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial; margin:20px; color:var(--fg); background:var(--bg)}
+    header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px; flex-wrap:wrap}
+    h1{margin:0; font-size:22px}
+    .muted{color:var(--muted)}
+    .cards{display:flex;gap:12px;margin-top:14px; flex-wrap:wrap}
+    .card{padding:12px 14px;border:1px solid var(--border);border-radius:10px;min-width:160px; background:var(--card)}
+    .card h3{margin:0 0 6px 0; font-size:13px; color:var(--muted); font-weight:600}
+    .card .val{font-size:22px; font-weight:700}
+
+    .grid{display:grid; grid-template-columns: 1fr; gap:14px; margin-top:14px}
+    @media (min-width: 980px){ .grid{grid-template-columns: 1fr 1fr} }
+
+    .panel{border:1px solid var(--border); border-radius:12px; background:var(--card)}
+    .panel header{padding:10px 12px; border-bottom:1px solid var(--border); align-items:center}
+    .panel header h3{margin:0; font-size:14px}
+    .panel .body{padding:12px}
+
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    label{font-size:12px; color:var(--muted)}
+    input, select, textarea{border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:14px}
+    textarea{width:100%}
+    button{border:1px solid var(--accent); background:var(--accent); color:#fff; padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer}
+    button.secondary{background:#fff; color:var(--accent)}
+
+    table{width:100%; border-collapse:separate; border-spacing:0}
+    th, td{padding:8px 10px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:top}
+    th{color:var(--muted); font-weight:700; text-align:left; background:linear-gradient(#fff,#fff)}
+    tr:hover td{background:var(--soft)}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size:12px}
+    .pill{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border); background:#fff}
+    .pill.green{border-color:rgba(5,150,105,.35); color:var(--green)}
+    .pill.red{border-color:rgba(220,38,38,.35); color:var(--red)}
+    .pill.amber{border-color:rgba(217,119,6,.35); color:var(--amber)}
+
+    .small{font-size:12px}
+    .click{cursor:pointer}
+    .err{color:var(--red)}
   </style>
 </head>
 <body>
   <header>
-    <h1>HILTE — Manager Dashboard (v0)</h1>
-    <div id="ts">--</div>
+    <div>
+      <h1>HILTE — Manager Dashboard (v0)</h1>
+      <div class="muted small">UI served from <span class="mono">http://127.0.0.1:9000</span> → API <span class="mono">http://127.0.0.1:8008</span></div>
+    </div>
+    <div class="muted" id="ts">--</div>
   </header>
 
   <div class="cards">
-    <div class="card">
-      <h3>Orders Today</h3>
-      <div id="orders_today">—</div>
-    </div>
-    <div class="card">
-      <h3>Orders Tomorrow</h3>
-      <div id="orders_tomorrow">—</div>
-    </div>
-    <div class="card">
-      <h3>Unpaid</h3>
-      <div id="unpaid">—</div>
-    </div>
+    <div class="card"><h3>Orders Today</h3><div class="val" id="orders_today">—</div></div>
+    <div class="card"><h3>Orders Tomorrow</h3><div class="val" id="orders_tomorrow">—</div></div>
+    <div class="card"><h3>Unpaid</h3><div class="val" id="unpaid">—</div></div>
   </div>
 
-  <section style="margin-top:18px">
-    <h3>Recent</h3>
-    <pre id="raw">loading...</pre>
-  </section>
+  <div class="grid">
+    <section class="panel">
+      <header>
+        <h3>Create Incident</h3>
+        <div class="muted small">Tip: click an order in the list → it fills Order ID.</div>
+      </header>
+      <div class="body">
+        <form id="incidentForm">
+          <div class="row">
+            <div>
+              <label>Order ID</label><br/>
+              <input type="text" name="order_id" id="order_id" placeholder="uuid (optional)" style="min-width:360px" />
+            </div>
+            <div>
+              <label>Severity</label><br/>
+              <select name="severity">
+                <option>low</option>
+                <option>medium</option>
+                <option>high</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <label>Text</label><br/>
+            <textarea name="text" rows="5" placeholder="What happened? What to do?" ></textarea>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button type="submit">Create Incident</button>
+            <button type="button" class="secondary" id="clearOrder">Clear Order ID</button>
+            <span id="incidentHint" class="muted small"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h3>Manager Summary</h3>
+        <div class="muted small">Raw JSON</div>
+      </header>
+      <div class="body">
+        <pre id="raw" class="mono" style="background:var(--soft); padding:12px; border-radius:10px; overflow:auto">loading...</pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h3>Latest Orders</h3>
+        <div class="row">
+          <label>Show</label>
+          <select id="ordersLimit">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+          <span class="muted small">click row → fill Order ID</span>
+        </div>
+      </header>
+      <div class="body" style="overflow:auto">
+        <div id="ordersErr" class="err small"></div>
+        <table id="ordersTable">
+          <thead>
+            <tr>
+              <th>Scheduled</th>
+              <th>Status</th>
+              <th>Price</th>
+              <th>Cost</th>
+              <th>Margin</th>
+              <th class="mono">Order ID</th>
+              <th class="mono">Booking</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h3>Latest Bookings</h3>
+        <div class="row">
+          <label>Show</label>
+          <select id="bookingsLimit">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </header>
+      <div class="body" style="overflow:auto">
+        <div id="bookingsErr" class="err small"></div>
+        <table id="bookingsTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Status</th>
+              <th class="mono">Booking ID</th>
+              <th>Client</th>
+              <th>Payload</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" style="grid-column:1/-1">
+      <header>
+        <h3>Audit Log</h3>
+        <div class="row">
+          <label>Show</label>
+          <select id="auditLimit">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+      </header>
+      <div class="body" style="overflow:auto">
+        <div id="auditErr" class="err small"></div>
+        <table id="auditTable">
+          <thead>
+            <tr>
+              <th>TS</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Meta</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
 <script>
 const API_BASE = 'http://127.0.0.1:8008';
 
-async function refresh(){
+function fmtDT(v){
+  if(!v) return '—';
+  try{ return new Date(v).toLocaleString(); }catch{ return String(v); }
+}
+function pill(status){
+  const s = String(status||'').toLowerCase();
+  let cls = '';
+  if(['paid','done','converted','confirmed'].includes(s)) cls = 'green';
+  else if(['failed','canceled','cancelled'].includes(s)) cls = 'red';
+  else if(['pending','requested','open','in_progress','qa_hold'].includes(s)) cls = 'amber';
+  return `<span class="pill ${cls}">${status||'—'}</span>`;
+}
+function safeJson(v){
+  try{ return JSON.stringify(v); }catch{ return String(v); }
+}
+
+async function fetchJson(url){
+  const r = await fetch(url, { mode:'cors' });
+  const t = await r.text();
+  if(!r.ok) throw new Error(`${url} HTTP ${r.status}: ${t.slice(0,200)}`);
+  return JSON.parse(t);
+}
+
+async function refreshSummary(){
   try{
-    const r = await fetch(API_BASE + '/dash/manager', { mode: 'cors' });
-    const t = await r.text();
-    if(!r.ok) throw new Error(`dash/manager HTTP ${r.status}: ${t.slice(0,200)}`);
-    const j = JSON.parse(t);
+    const j = await fetchJson(API_BASE + '/dash/manager');
     document.getElementById('orders_today').textContent = j.orders_today;
     document.getElementById('orders_tomorrow').textContent = j.orders_tomorrow;
     document.getElementById('unpaid').textContent = j.unpaid;
     document.getElementById('raw').textContent = JSON.stringify(j, null, 2);
     document.getElementById('ts').textContent = new Date().toLocaleString();
   }catch(e){
-    document.getElementById('raw').textContent = 'error: ' + (e && e.message ? e.message : String(e));
+    document.getElementById('raw').textContent = 'error: ' + (e?.message || String(e));
   }
 }
-refresh();setInterval(refresh,5000);
-</script>
 
-  <section style="margin-top:18px">
-    <h3>Create Incident</h3>
-    <form id="incidentForm">
-      <label>Order ID: <input type="text" name="order_id" /></label><br/>
-      <label>Severity: <select name="severity"><option>low</option><option>medium</option><option>high</option></select></label><br/>
-      <label>Text:<br/><textarea name="text" rows="4" cols="60"></textarea></label><br/>
-      <button type="submit">Create Incident</button>
-    </form>
-  </section>
+function renderOrders(rows){
+  const tb = document.querySelector('#ordersTable tbody');
+  tb.innerHTML = '';
+  for(const r of rows){
+    const tr = document.createElement('tr');
+    tr.className = 'click';
+    tr.innerHTML = `
+      <td>${fmtDT(r.scheduled_at)}</td>
+      <td>${pill(r.status)}</td>
+      <td>${Number(r.price||0).toFixed(0)}</td>
+      <td>${Number(r.cost||0).toFixed(0)}</td>
+      <td>${Number(r.margin||0).toFixed(0)}</td>
+      <td class="mono">${r.id}</td>
+      <td class="mono">${r.booking_id || '—'}</td>
+    `;
+    tr.addEventListener('click', () => {
+      const inp = document.getElementById('order_id');
+      inp.value = r.id;
+      document.getElementById('incidentHint').textContent = 'Order ID filled from Orders list.';
+      inp.scrollIntoView({behavior:'smooth', block:'center'});
+      inp.focus();
+    });
+    tb.appendChild(tr);
+  }
+}
 
-  <section style="margin-top:18px">
-    <h3>Latest Orders</h3>
-    <pre id="orders">loading...</pre>
-  </section>
+function renderBookings(rows){
+  const tb = document.querySelector('#bookingsTable tbody');
+  tb.innerHTML = '';
+  for(const r of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDT(r.created_at)}</td>
+      <td>${pill(r.status)}</td>
+      <td class="mono">${r.id}</td>
+      <td class="mono">${r.client_id || '—'}</td>
+      <td class="mono">${safeJson(r.payload || {})}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
 
-  <section style="margin-top:18px">
-    <h3>Latest Bookings</h3>
-    <pre id="bookings">loading...</pre>
-  </section>
+function renderAudit(rows){
+  const tb = document.querySelector('#auditTable tbody');
+  tb.innerHTML = '';
+  for(const r of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${fmtDT(r.ts)}</td>
+      <td class="mono">${r.actor}</td>
+      <td class="mono">${r.action}</td>
+      <td class="mono">${r.target_table || '—'}${r.target_id ? ' / ' + r.target_id : ''}</td>
+      <td class="mono">${safeJson(r.meta || {})}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
 
-  <section style="margin-top:18px">
-    <h3>Audit Log</h3>
-    <pre id="audit">loading...</pre>
-  </section>
+async function refreshOrders(){
+  const limit = document.getElementById('ordersLimit').value;
+  document.getElementById('ordersErr').textContent = '';
+  try{
+    const j = await fetchJson(API_BASE + `/orders?limit=${limit}`);
+    renderOrders(j);
+  }catch(e){
+    document.getElementById('ordersErr').textContent = e?.message || String(e);
+  }
+}
 
-<script>
+async function refreshBookings(){
+  const limit = document.getElementById('bookingsLimit').value;
+  document.getElementById('bookingsErr').textContent = '';
+  try{
+    const j = await fetchJson(API_BASE + `/bookings?limit=${limit}`);
+    renderBookings(j);
+  }catch(e){
+    document.getElementById('bookingsErr').textContent = e?.message || String(e);
+  }
+}
+
+async function refreshAudit(){
+  const limit = document.getElementById('auditLimit').value;
+  document.getElementById('auditErr').textContent = '';
+  try{
+    const j = await fetchJson(API_BASE + `/audit_logs?limit=${limit}`);
+    renderAudit(j);
+  }catch(e){
+    document.getElementById('auditErr').textContent = e?.message || String(e);
+  }
+}
+
+async function refreshAll(){
+  await Promise.allSettled([refreshSummary(), refreshOrders(), refreshBookings(), refreshAudit()]);
+}
+
+// incident form
+document.getElementById('clearOrder').addEventListener('click', () => {
+  document.getElementById('order_id').value = '';
+  document.getElementById('incidentHint').textContent = '';
+});
+
 document.getElementById('incidentForm').addEventListener('submit', async function(e){
   e.preventDefault();
   try{
     const fd = new FormData(e.target);
     const data = Object.fromEntries(fd.entries());
-    // empty strings -> null
     if(data.order_id === '') delete data.order_id;
-    if(data.text === '') throw new Error('Text is required');
+    if(!data.text || data.text.trim() === '') throw new Error('Text is required');
 
-    const res = await fetch(API_BASE + '/incidents', {method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
-    const t = await res.text();
-    if(!res.ok) throw new Error(`incidents HTTP ${res.status}: ${t.slice(0,200)}`);
-    const json = JSON.parse(t);
-    alert('Incident created: '+json.id);
+    const r = await fetch(API_BASE + '/incidents', {method:'POST', mode:'cors', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+    const t = await r.text();
+    if(!r.ok) throw new Error(`incidents HTTP ${r.status}: ${t.slice(0,200)}`);
+    const j = JSON.parse(t);
+    alert('Incident created: ' + j.id);
     e.target.reset();
-    loadAll();
+    document.getElementById('incidentHint').textContent = '';
+    await refreshAll();
   }catch(err){
-    alert('Create Incident failed: ' + (err && err.message ? err.message : String(err)));
+    alert('Create Incident failed: ' + (err?.message || String(err)));
   }
 });
-async function loadAudit(){
-  const r = await fetch(API_BASE + '/audit_logs?limit=20', { mode: 'cors' });
-  const t = await r.text();
-  if(!r.ok) throw new Error(`audit_logs HTTP ${r.status}: ${t.slice(0,200)}`);
-  const j = JSON.parse(t);
-  document.getElementById('audit').textContent = JSON.stringify(j, null, 2);
+
+// bind selects
+for(const id of ['ordersLimit','bookingsLimit','auditLimit']){
+  document.getElementById(id).addEventListener('change', refreshAll);
 }
 
-async function loadOrders(){
-  const r = await fetch(API_BASE + '/orders?limit=20', { mode: 'cors' });
-  const t = await r.text();
-  if(!r.ok) throw new Error(`orders HTTP ${r.status}: ${t.slice(0,200)}`);
-  const j = JSON.parse(t);
-  document.getElementById('orders').textContent = JSON.stringify(j, null, 2);
-}
-
-async function loadBookings(){
-  const r = await fetch(API_BASE + '/bookings?limit=20', { mode: 'cors' });
-  const t = await r.text();
-  if(!r.ok) throw new Error(`bookings HTTP ${r.status}: ${t.slice(0,200)}`);
-  const j = JSON.parse(t);
-  document.getElementById('bookings').textContent = JSON.stringify(j, null, 2);
-}
-
-async function loadAll(){
-  await Promise.allSettled([loadAudit(), loadOrders(), loadBookings()]);
-}
-
-loadAll();
-setInterval(loadAll, 5000);
+refreshAll();
+setInterval(refreshAll, 5000);
 </script>
-
 </body>
 </html>
